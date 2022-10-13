@@ -1,0 +1,670 @@
+# Que es tRPC
+
+**tRPC** es una librería que te ayuda a crear APIs completamente tipadas(TS) sin necesidad de schemas o
+herramientas de generación de código. Ayuda a agregar tipos desde el servidor
+al cliente sin definiciones complejas o conocimiento avanzado de TS.
+
+## ¿Por qué es importante agregar tipos o typescript?
+
+Javascript es un lenguaje no tipado que te permite programar de manera flexible pero esa flexibilidad vuelve complejo el
+proceso de mantener el código, agregar funcionalidad o probarlo, pero no solo eso al ser tan flexible puede resultar
+frustrante aprenderlo o utilizarlo, y eso puede ocultar errores que no sean evidentes o fáciles de encontrar.
+
+Ejemplo
+
+ <Sandpack
+  template="vanilla-ts"
+  mode="console"
+  files={{
+  'src/index.ts': {
+    code: `function sumar(a, b) {
+return a + b;
+}
+
+const sumar1 = sumar(1, 2);
+const sumar2 = sumar(1, '2');
+const sumar3 = sumar(1);
+`,
+},
+}}
+/>
+
+### Typescript (10 años) 🎉
+
+Typescript es un subconjunto de Javascript que integra el poder definir tipos de datos dentro de nuestro código
+y puede llegar a ser tan específico como queramos.
+
+ <Sandpack
+  template="vanilla-ts"
+  customSetup={{
+    dependencies: {
+      '@type-challenges/utils': '0.1.1',
+    },
+  }}
+  files={{
+    'src/index.ts': {
+      code: `type First<T extends any[]> = any;
+
+/** Test Cases **/
+import type { Equal, Expect } from '@type-challenges/utils';
+
+type cases = [
+Expect<Equal<First<[3, 2, 1]>, 3>>,
+Expect<Equal<First<[() => 123, { a: string }]>, () => 123>>,
+Expect<Equal<First<[]>, never>>,
+Expect<Equal<First<[undefined]>, undefined>>
+];
+`,
+},
+}}
+/>
+
+[Playground Link](https://www.typescriptlang.org/play?#code/PQKgUABBCMAsEFoIDECWAnAzgFwgewDMIBBddAQwE9JEE76aAjSkgO2wAs9WXkBXCAAoAAuXYE+ASggBiAKblMLGeTJUaNGVogBFPnJypuGqAEkAtgAcANnPNz2EchADmDuelQBjCAAM0WNgAPAAqAHy+EJzkuNjkANYGTqwkaiy+IZFiACYQ6HLYfOismBCo2KUEGDgQcrb27ADkpdiUlnIAdCYoeOi1AB7kVrYAXN2+ExU0re1OZNAQALwQANqN5I0ANBCNjFs7Xo0AutNtcnPoAExLqwDM25fb0CdQp7McCtkLywE4QaroaBhCDAYADdpebByXLYPAQRjndaNN7nD7kbLXH7VYIAy7A0HguSQ6FROEIiC3GgTXzdYEANVQcgA7vgUgBxcoACT4jBGEA42GwlkwI1BFS8HA6ACtMB1ei5gHAwCBgGA1aAIAB9bU63U6iAATTwRQgAGE8NlzpyPOc9XbtRAVWqZudfsEQgMoaxsqUxJQVkdgcs-WqwBr7XaICEDLhTYokhG9Y7VagrL1YmcIABvCAAUQAjnxyNZtrn+hDcABfCAEdB4cw7YQuhAS4u2VhuTDAPjYVDWTDIsAuiBeeOlZYrGhlitBAtF6xBN1BFb3CCPGCB7a3MJhTZT8tE4Jz4uL7HLwTSRbA6CXVc58h8nCeDsQSuboSX6+3nd7qDTw+zoWJ5LgGu4QKwcgAG4eD++4zseC4gXw3pyFUEHZO+yGWmh0KwScQ6Zh4dZYDck5QASTaYAgcgHpC1FkL0NBLo0rB4NgpAUJQjS7jQFEVNRtHYPRxFMWeOYAAx8usaQADKoIkjSvjx+HqiAWqJvq-DoJwHgQAAylCwrqRpmrJmG4BQMCekcKo5yUMafSYHg1g9kYJR8gKQoimKmAStKsryoqsDAGImBMh4ND0oyLJOS5vbcCK-KCsKorAOKkoynK6AKnAwCxa5CWRRAACyvTnKaNnWO2nYecl3lpb5GUBdlyqqmAQA) |
+[Challenges Link](https://github.com/type-challenges/type-challenges)
+
+Typescript permite proteger nuestro código para que el desarrollo sea más robusto y fácil, esto también potencializa las capacidades de editores como VS Code, Vim, JetBrains y otros.
+
+## ¿Por qué otra librería?
+
+El problema que trata de resolver tRPC es agilizar el desarrollo de aplicaciones teniendo la seguridad que nuestro cliente
+y servidor están sincronizados, eso garantiza la consistencia de los datos que se comparten. Es decir, el servidor sabe el tipo
+de petición que le hace el cliente y el cliente sabrá la estructura de respuesta que el servidor le enviará.
+
+Actualmente tenemos tenemos dos formas populares de lograr esto.
+
+### REST + TS
+
+Consiste en agregar tipos a el api desde el servidor y después compartir esos tipos del lado del cliente o crear tipos específicos para el cliente. El procesos sería algo como lo siguiente:
+
+- Definir el API y su funcionalidad, agregar la definición del tipo de dato que soporta nuestro API (entradas y salidas).
+- Compartir esos tipos con el cliente y usar esos tipos en los lugares necesarios, algunos de esos tipos pueden resultar difíciles de compartir y hay que crear tipos personalizados.
+- Hay que agregar tipos a las peticiones que hace el cliente al servidor (React Query, SWR, axios, fetch).
+
+Ejemplo
+
+```typescript
+// Backend setup
+// mark
+type ApiResponse = APIResponse<MarketingPublicProjectDataResponse>;
+
+const querySchema = yup.object().shape({
+    slug: yup.string().required(),
+});
+// mark
+const handler = baseHandler().get<SafeQuery<typeof querySchema>>(
+    featureControl(FeatureFlag.LIST_USERS),
+    safeQuery(querySchema),
+    // mark
+    async (req, res: ApiResponse) => {
+        const slug = req.safeQuery.slug;
+
+
+        res.json({
+            data: {
+            },
+        });
+    }
+);
+
+// Front end setup
+export const Data = {
+    async list() {
+        // mark
+        const response = await axios.get<APITypes.ListUsers>(/list-users);
+        return response.data;
+    },
+};
+
+// Types for queries
+export function useListUsers(
+    // mark
+    options: UseQueryOptions<ResolvedReturnValue<typeof api.Data.list>, APITypes.APIError> = {}
+) {
+    // mark
+    return useQuery<ResolvedReturnValue<typeof api.Data.list>, APITypes.APIError>(
+        ["list-users"],
+        () => api.Data.list(),
+        {
+            staleTime: 5 * 60_000,
+            ...options,
+        }
+    );
+}
+
+```
+
+### GRAPHQL + TS
+
+Consiste en crear esquemas específicos tipados que se comparten entre el cliente y el servidor.
+
+- Crear los esquemas de cada objeto de datos.
+- Crear los tipos para cada definición de ese esquema.
+- Usar esos tipos en los resolvers.
+- Compartir esos tipos en el cliente cuando se hacen las peticiones al API.
+
+Existen librerias que ayudan a agilizar esto [https://typegraphql.com/](https://typegraphql.com/)
+
+```typescript
+@ObjectType()
+class Recipe {
+  @Field()
+  title: string;
+
+  @Field({ nullable: true })
+  description?: string;
+
+  @Field((type) => [Rate])
+  ratings: Rate[];
+
+  @Field((type) => Float, { nullable: true })
+  get averageRating() {
+    const sum = this.ratings.reduce((a, b) => a + b, 0);
+    return sum / this.ratings.length;
+  }
+}
+```
+
+y se usan asi
+
+```typescript
+@Resolver((of) => Recipe)
+export class RecipeResolver {
+  constructor(
+    private readonly recipeRepository: Repository<Recipe>,
+    private readonly rateRepository: Repository<Rate>
+  ) {}
+
+  @Query((returns) => Recipe)
+  async recipe(@Arg('recipeId') recipeId: string) {
+    return this.recipeRepository.findOneById(recipeId);
+  }
+
+  @Mutation((returns) => Recipe)
+  async addRecipe(@Arg('recipe') recipeInput: RecipeInput) {
+    const newRecipe = this.recipeRepository.create(recipeInput);
+    return this.recipeRepository.save(newRecipe);
+  }
+
+  @FieldResolver()
+  ratings(@Root() recipe: Recipe) {
+    return this.rateRepository.find({ recipeId: recipe.id });
+  }
+}
+```
+
+Pero aun así para garantizar cohesión es necesario agregar tipos a nuestro cliente correctamente.
+
+```typescript
+import React from 'react';
+import { useQuery, gql } from '@apollo/client';
+
+// mark
+type RocketInventory {
+  id: number;
+  model: string;
+  year: number;
+  stock: number;
+}
+
+// mark
+type RocketInventoryData {
+  rocketInventory: RocketInventory[];
+}
+
+// mark
+type RocketInventoryVars {
+  year: number;
+}
+
+const GET_ROCKET_INVENTORY = gql`
+  query GetRocketInventory($year: Int!) {
+    rocketInventory(year: $year) {
+      id
+      model
+      year
+      stock
+    }
+  }
+`;
+
+export function RocketInventoryList() {
+  // mark
+  const { loading, data } = useQuery<RocketInventoryData, RocketInventoryVars>(
+    GET_ROCKET_INVENTORY,
+    { variables: { year: 2019 } }
+  );
+  return <div>…</div>;
+}
+```
+
+### Y ahora tRPC
+
+Con tRPC todo esto se soluciona de manera automática y lo hace la liberia misma con inferencia de tipos
+y con ayuda de algunas dependencias. Esto permite crear procedimientos específicos que comparten
+toda la información de los tipos de datos entre el cliente y servidor, así se integra el cliente con el servidor **sin esfuerzo extra**.
+
+## DEMO
+
+Empezamos con un proyecto limpio de Nextjs y Typescript, vamos a instalar las dependencias, para este proyecto vamos a agregar tRPC, React Query y Zod.
+
+Instalamos tRPC y react query 👩🏻‍💻
+
+```s
+npm install @trpc/server@next @trpc/client@next @trpc/react@next @trpc/next@next @tanstack/react-query
+```
+
+La estructura que vamos a ocupar es la siguiente ⬇
+
+```
+.
+├── prisma # <-- if prisma is added
+│   └── [..]
+├── pages
+│   ├── _app.tsx # <-- add `withTRPC()`-HOC here
+│   ├── api
+│   │   └── trpc
+│   │       └── [trpc].ts # <-- tRPC HTTP handler
+│   └── [..]
+├── server
+│   ├── routers
+│   │   ├── app.ts   # <-- main app router
+│   │   ├── post.ts  # <-- sub routers
+│   │   └── [..]
+│   ├── context.ts      # <-- create app context
+│   └── trpc.ts         # <-- procedure helpers
+│   └── utils
+│       └── trpc.ts  # <-- your typesafe tRPC hooks
+└── [..]
+```
+
+Creamos nuestro API router en
+
+`./pages/api/trpc/[trpc].ts`
+
+y agregamos la definción de nuestro manejador de tRPC (este router va a sincronizar todas las peticiones al API) 👩🏻‍💻
+
+```typescript pages/api/trpc/[trpc].ts
+import { initTRPC } from '@trpc/server';
+import * as trpcNext from '@trpc/server/adapters/next';
+
+const trpcInstance = initTRPC.create();
+
+const appRouter = trpcInstance.router({});
+
+// exportamos los de tipos del API
+export type AppRouter = typeof appRouter;
+
+// exportamos API handler para que nextjs lo pueda usar
+export default trpcNext.createNextApiHandler({
+  router: appRouter,
+
+  // esto se usa para agregar informacion de contexto a nuestra aplicacion
+  // - como user data o feature flags
+  createContext: () => ({}),
+});
+```
+
+Definimos nuestra instancia de tRPC dentro de utils
+
+`./server/utils/trpc.ts`
+
+```typescript /server/utils/trpc.ts
+import { httpBatchLink } from '@trpc/client';
+import { createTRPCNext } from '@trpc/next';
+import type { AppRouter } from 'pages/api/trpc/[trpc]';
+
+function getBaseUrl() {
+  if (typeof window !== 'undefined') {
+    // In the browser, we return a relative URL
+    return '';
+  }
+  // When rendering on the server, we return an absolute URL
+
+  // reference for vercel.com
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL}`;
+  }
+
+  // assume localhost
+  return `http://localhost:${process.env.PORT ?? 3000}`;
+}
+
+export const trpc = createTRPCNext<AppRouter>({
+  config() {
+    return {
+      links: [
+        httpBatchLink({
+          url: getBaseUrl() + '/api/trpc',
+        }),
+      ],
+    };
+  },
+  // mark
+  // ssr: true, // tRPC supports server side rendering
+});
+```
+
+Iniciamos el proyecto para ver si funciona. 👩🏻‍💻
+
+```s
+npm run dev
+```
+
+Configuramos el primer router, vamos a instalar zod para que se validen las entradas y salidas de nuestros procedimientos en tiempo de ejecución 👩🏻‍💻
+
+```s
+npm install zod
+```
+
+Modificamos nuestro router ✍️
+
+```typescript focus=8:19 pages/api/trpc/[trpc].ts
+import { initTRPC } from '@trpc/server';
+import * as trpcNext from '@trpc/server/adapters/next';
+import { z } from 'zod';
+
+const trpcInstance = initTRPC.create();
+
+const appRouter = trpcInstance.router({
+  getClient: trpcInstance.procedure
+    .input(
+      z.object({
+        id: z.number().min(0, 'The id needs to be a positive number'),
+      })
+    )
+    .query(({ input }) => {
+      console.log(input.id);
+      return {
+        input,
+      };
+    }),
+});
+
+// exportamos los de tipos del API
+export type AppRouter = typeof appRouter;
+
+// exportamos API handler para que nextjs lo pueda usar
+export default trpcNext.createNextApiHandler({
+  router: appRouter,
+
+  // esto se usa para agregar informacion de contexto a nuestra aplicacion
+  // - como user data o feature flags
+  createContext: () => ({}),
+});
+```
+
+Tambien podemos validar la salida de nuestro procedimiento. ✍️
+
+```typescript focus=14:18 pages/api/trpc/[trpc].ts
+import { initTRPC } from '@trpc/server';
+import * as trpcNext from '@trpc/server/adapters/next';
+import { z } from 'zod';
+
+const trpcInstance = initTRPC.create();
+
+const appRouter = trpcInstance.router({
+  getClient: trpcInstance.procedure
+    .input(
+      z.object({
+        id: z.number().min(0, 'The id needs to be a positive number'),
+      })
+    )
+    .output(
+      z.object({
+        id: z.number(),
+      })
+    )
+    .query(({ input }) => {
+      console.log(input.id);
+      return {
+        input,
+      };
+    }),
+});
+
+// exportamos los de tipos del API
+export type AppRouter = typeof appRouter;
+
+// exportamos API handler para que nextjs lo pueda usar
+export default trpcNext.createNextApiHandler({
+  router: appRouter,
+
+  // esto se usa para agregar informacion de contexto a nuestra aplicacion
+  // - como user data o feature flags
+  createContext: () => ({}),
+});
+```
+
+Ahora vamos a integrar el API con el cliente \_app.tsx ✍️
+
+```typescript _app.tsx
+import type { AppType } from 'next/dist/shared/lib/utils';
+// focus
+import { trpc } from 'server/utils/trpc';
+
+const MyApp: AppType = ({ Component, pageProps }) => {
+  return <Component {...pageProps} />;
+};
+
+// focus
+export default trpc.withTRPC(MyApp);
+```
+
+Probamos el API, vamos a agregar tRPC a nuestro código del cliente en el index ✍️
+
+```typescript mark=25 pages/index.ts
+import type { NextPage } from 'next';
+import Head from 'next/head';
+import Image from 'next/image';
+import styles from '../styles/Home.module.css';
+// mark
+import { trpc } from '../server/utils/trpc';
+
+const Home: NextPage = () => {
+  // mark
+  const clientsQuery = trpc.getClient.useQuery({
+    id: 5,
+  });
+
+  return (
+    <div className={styles.container}>
+      <Head>
+        <title>Create Next App</title>
+        <meta name="description" content="Generated by create next app" />
+        <link rel="icon" href="/favicon.ico" />
+      </Head>
+
+      <main className={styles.main}>
+        <h1 className={styles.title}>tRPC</h1>
+
+        <p className={styles.description}>
+          response
+          <code className={styles.code}>{clientsQuery.data?.id}</code>
+        </p>
+      </main>
+
+      <footer className={styles.footer}>
+        <a
+          href="https://vercel.com?utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Powered by{' '}
+          <span className={styles.logo}>
+            <Image src="/vercel.svg" alt="Vercel Logo" width={72} height={16} />
+          </span>
+        </a>
+      </footer>
+    </div>
+  );
+};
+
+export default Home;
+```
+
+Agregamos unos datos en memoria y veamos cómo funcionan las mutaciones.
+
+```typescript pages/api/trpc/[trpc].ts
+/**
+ * Cuando la aplicación crece hay que dividir las implementacions para que este archivo no se haga enorme
+ */
+import { initTRPC, TRPCError } from '@trpc/server';
+import * as trpcNext from '@trpc/server/adapters/next';
+import { z } from 'zod';
+
+type User = { id: number; name: string };
+const database: User[] = [
+  {
+    id: 1,
+    name: 'Peter',
+  },
+  {
+    id: 2,
+    name: 'Parker',
+  },
+  {
+    id: 3,
+    name: 'Spider man',
+  },
+];
+
+const trpcInstance = initTRPC.create();
+
+const appRouter = trpcInstance.router({
+  getClients: trpcInstance.procedure.query(() => {
+    return {
+      users: [...database],
+    };
+  }),
+  getClient: trpcInstance.procedure
+    .input(
+      z.object({
+        id: z.number().min(0, 'The id needs to be a positive number'),
+      })
+    )
+    .query(({ input }) => {
+      const user = database.find((u) => {
+        return u.id === input.id;
+      });
+
+      if (!user) {
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: 'No user found with that id',
+        });
+      }
+
+      return {
+        user: user,
+      };
+    }),
+
+  addClient: trpcInstance.procedure
+    .input(
+      z.object({
+        name: z.string(),
+      })
+    )
+    .mutation((ctx) => {
+      const { input } = ctx;
+
+      database.push({
+        name: input.name,
+        id: database.length + 1,
+      });
+    }),
+});
+
+// exportamos la definición de tipos del API
+export type AppRouter = typeof appRouter;
+
+// exportamos API handler para nextjs lo pueda exponer
+export default trpcNext.createNextApiHandler({
+  router: appRouter,
+
+  // esto se usa para agregar informacion de contexto a nuestra aplicacion
+  // - como user data o feature flags
+  createContext: () => ({}),
+});
+```
+
+Modificamos nuestro cliente
+
+```typescript pages/index.ts
+import type { NextPage } from 'next';
+import React from 'react';
+import Head from 'next/head';
+import Image from 'next/image';
+import styles from '../styles/Home.module.css';
+import { trpc } from '../server/utils/trpc';
+
+const Home: NextPage = () => {
+  const [name, setName] = React.useState('');
+  const [id, setId] = React.useState(1);
+  const clientQuery = trpc.getClient.useQuery(
+    {
+      id: Number(id),
+    },
+    {
+      enabled: Boolean(id),
+    }
+  );
+  const addClientMutation = trpc.addClient.useMutation();
+  const clientsQuery = trpc.getClients.useQuery();
+  const clients = clientsQuery?.data?.users || [];
+
+  return (
+    <div className={styles.container}>
+      <Head>
+        <title>Create Next App</title>
+        <meta name="description" content="Generated by create next app" />
+        <link rel="icon" href="/favicon.ico" />
+      </Head>
+
+      <main className={styles.main}>
+        <h1 className={styles.title}>tRPC</h1>
+
+        <div className={styles.description}>
+          <input type="text" onChange={(e) => setName(e.target.value)} />
+          <button
+            onClick={async () => {
+              await addClientMutation.mutateAsync({
+                name: name,
+              });
+              clientsQuery.refetch();
+            }}
+          >
+            Agregar
+          </button>
+        </div>
+        <p className={styles.description}>
+          {clients.map((c) => (
+            <div key={c.id}>
+              {c.id} - {c.name}
+            </div>
+          ))}
+          <div>
+            <input type="text" onChange={(e) => setId(e.target.value)} />
+          </div>
+        </p>
+
+        <p className={styles.description}>
+          <code className={styles.code}>
+            user : {clientQuery.data?.user.id} | {clientQuery.data?.user.name}
+          </code>
+          {clientQuery.isFetching && <span>Loading ...</span>}
+          {clientQuery.isError && (
+            <span>{clientQuery.error?.shape?.message}</span>
+          )}
+        </p>
+      </main>
+    </div>
+  );
+};
+
+export default Home;
+```
+
+## ¿Que más podemos hacer?
+
+Autorización | Autenticación | Feature flags | Middlewares
