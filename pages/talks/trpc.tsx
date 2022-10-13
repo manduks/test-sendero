@@ -26,12 +26,17 @@ export const getServerSideProps: GetServerSideProps = async () => {
   const mdxPath = path.join(process.cwd(), 'mdx/talks/trpc.mdx');
   const source = fs.readFileSync(mdxPath) as unknown as string;
 
+  console.log({ mdxPath });
+
   const mdxSource = await serialize(source, {
     mdxOptions: {
       remarkPlugins: [[remarkCodeHike, { autoImport: false, theme }]],
       useDynamicImport: true,
     },
   });
+
+  console.log({ mdxSource });
+
   return {
     props: {
       source: mdxSource,
