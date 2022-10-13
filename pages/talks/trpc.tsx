@@ -15,7 +15,6 @@ import path from 'path';
 import { remarkCodeHike } from '@code-hike/mdx';
 import { serialize } from 'next-mdx-remote/serialize';
 import theme from 'shiki/themes/material-ocean.json';
-import { useInViewAtom } from 'atoms/inViewAtom';
 
 const Sandpack = dynamic(() => import('components/Sandpack'), {
   //suspense: true,
@@ -48,8 +47,7 @@ export const getServerSideProps: GetServerSideProps = async () => {
 type PageProps = InferGetServerSidePropsType<typeof getServerSideProps>;
 
 export default function Trpc({ source }: PageProps) {
-  const [inView] = useInViewAtom();
-  const startCoding = inView.code;
+  const startCoding = false;
 
   return (
     <div className="bg-negro-claro h-[100vh]">
