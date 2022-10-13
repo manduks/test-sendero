@@ -106,3 +106,7 @@ export default function Trpc({ source }: PageProps) {
     </div>
   );
 }
+
+export const config = {
+  unstable_includeFiles: ['node_modules/**/shiki/**/*.json'],
+};
